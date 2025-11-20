@@ -1,10 +1,15 @@
+import type React from "react";
 import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
+const _geist = Geist({ subsets: ["latin"] });
+const _geistMono = Geist_Mono({ subsets: ["latin"] });
+
 export const metadata: Metadata = {
-  title: "ComprAR-IA - Recomendador de Compras para el Hogar",
+  title: "Compraria - Optimizador de Compras",
   description:
-    "La IA que recomienda inteligentemente qué comprar para tu hogar",
+    "Encuentra los mejores precios en supermercados y ahorra hasta 40% en tus compras",
   generator: "v0.app",
   icons: {
     icon: [
@@ -31,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="es">
       <body className={`font-sans antialiased`}>{children}</body>
     </html>
   );

@@ -1,0 +1,98 @@
+"use client";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Download, Share2, TrendingDown } from "lucide-react";
+
+interface ResultsPanelProps {
+  resultado: {
+    total: number;
+    ahorro_estimado: number;
+    supermercados: Record<string, { producto: string; precio: number }[]>;
+  };
+  onDownloadPDF: () => void;
+  onShareWhatsApp: () => void;
+}
+
+export default function ResultsPanel({
+  resultado,
+  onDownloadPDF,
+  onShareWhatsApp,
+}: ResultsPanelProps) {
+  return (
+    <Card className="border-2 border-accent from-accent/5 to-primary/5 overflow-hidden shadow-lg">
+      <CardHeader className="from-primary/10 to-accent/10 border-b border-accent/20 pb-6">
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <TrendingDown className="w-5 h-5 text-accent" />
+            <CardTitle className="text-lg">Tu compra optimizada</CardTitle>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground mb-1">Total a pagar</p>
+            <p className="text-4xl font-bold text-primary">
+              ${Math.round(resultado.total).toLocaleString("es-AR")}
+            </p>
+          </div>
+          <div className="pt-2">
+            <Badge className="bg-accent text-accent-foreground text-sm">
+              Ahorro: $
+              {Math.round(resultado.ahorro_estimado).toLocaleString("es-AR")}{" "}
+              (38%)
+            </Badge>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-6">
+        <ScrollArea className="h-80 mb-6">
+          <div className="space-y-6 pr-4">
+            {Object.entries(resultado.supermercados).map(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              ([superNombre, items]: [string, any[]]) => (
+                <div key={superNombre}>
+                  <h3 className="font-semibold text-foreground mb-3 text-sm uppercase tracking-wide">
+                    {superNombre}
+                  </h3>
+                  <div className="space-y-2 ml-2 border-l-2 border-accent/20 pl-4">
+                    {items.map((item, i) => (
+                      <div
+                        key={i}
+                        className="flex justify-between items-baseline text-sm"
+                      >
+                        <span className="text-foreground">{item.producto}</span>
+                        <span className="font-semibold text-accent">
+                          ${item.precio.toLocaleString("es-AR")}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            )}
+          </div>
+        </ScrollArea>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            onClick={onDownloadPDF}
+            variant="outline"
+            size="sm"
+            className="w-full bg-transparent"
+          >
+            <Download className="mr-2 w-4 h-4" />
+            PDF
+          </Button>
+          <Button
+            onClick={onShareWhatsApp}
+            size="sm"
+            className="w-full bg-accent hover:bg-accent/90"
+          >
+            <Share2 className="mr-2 w-4 h-4" />
+            Compartir
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
