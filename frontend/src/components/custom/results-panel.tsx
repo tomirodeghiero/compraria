@@ -6,11 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Download, Share2, TrendingDown } from "lucide-react";
 
+interface ResultItem {
+  producto: string;
+  cantidad?: number;
+  precio_unitario?: number;
+  precio_total?: number;
+  supermercado?: string;
+}
+
 interface ResultsPanelProps {
   resultado: {
     total: number;
     ahorro_estimado: number;
-    supermercados: Record<string, { producto: string; precio: number }[]>;
+    supermercados: Record<string, ResultItem[]>;
   };
   onDownloadPDF: () => void;
   onShareWhatsApp: () => void;
@@ -55,17 +63,30 @@ export default function ResultsPanel({
                     {superNombre}
                   </h3>
                   <div className="space-y-2 ml-2 border-l-2 border-accent/20 pl-4">
-                    {items.map((item, i) => (
-                      <div
-                        key={i}
-                        className="flex justify-between items-baseline text-sm"
-                      >
-                        <span className="text-foreground">{item.producto}</span>
-                        <span className="font-semibold text-accent">
-                          ${item.precio.toLocaleString("es-AR")}
-                        </span>
-                      </div>
-                    ))}
+                    {items.map((item: ResultItem, i: number) => {
+                      const precioTotal =
+                        item.precio_total ??
+                        (item.precio_unitario != null && item.cantidad != null
+                          ? item.precio_unitario * item.cantidad
+                          : undefined);
+
+                      return (
+                        <div
+                          key={i}
+                          className="flex justify-between items-baseline text-sm"
+                        >
+                          <span className="text-foreground">
+                            {item.producto}
+                            {item.cantidad && item.cantidad > 1 ? (
+                              <span className="text-muted-foreground ml-2">×{item.cantidad}</span>
+                            ) : null}
+                          </span>
+                          <span className="font-semibold text-accent">
+                            ${((precioTotal ?? 0) as number).toLocaleString("es-AR")}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )

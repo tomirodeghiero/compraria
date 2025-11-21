@@ -44,27 +44,28 @@ class OptimizadorCompras:
     
     @staticmethod
     def parse_quantity(text: str) -> Tuple[str, int]:
-        """
-        Extrae la cantidad y el nombre del producto de un texto.
-        
-        Args:
-            text: Texto que contiene el producto y opcionalmente la cantidad
-            
-        Returns:
-            Tupla con (nombre_producto, cantidad)
-        """
-        match = re.search(PATRON_CANTIDAD, text, re.IGNORECASE)
-        
-        if match:
-            cantidad = int(match.group(1) or match.group(2) or 1)
-            nombre_limpio = re.sub(
-                PATRON_CANTIDAD, 
-                '', 
-                text, 
-                flags=re.IGNORECASE
-            ).strip()
+        """Extract quantity from text. Improved to avoid matching weights like '200g' as quantity."""
+        # 1) xN style
+        m = re.search(r'(?:[xX×*]\s*)(\d+)', text)
+        if m:
+            cantidad = int(m.group(1))
+            nombre_limpio = re.sub(r'(?:[xX×*]\s*\d+)', '', text).strip()
             return nombre_limpio or text, cantidad
-        
+
+        # 2) number + explicit unit (kg, g, unid, etc.)
+        m = re.search(r'(\d+)\s*(?:unid|paq|lt|l|kg|g|gr|ml|unidades|litros|kilos)\b', text, re.IGNORECASE)
+        if m:
+            cantidad = int(m.group(1))
+            nombre_limpio = re.sub(r'\d+\s*(?:unid|paq|lt|l|kg|g|gr|ml|unidades|litros|kilos)\b', '', text, flags=re.IGNORECASE).strip()
+            return nombre_limpio or text, cantidad
+
+        # 3) standalone number (word boundaries) — avoids matching '200g'
+        m = re.search(r'\b(\d+)\b', text)
+        if m:
+            cantidad = int(m.group(1))
+            nombre_limpio = re.sub(r'\b\d+\b', '', text).strip()
+            return nombre_limpio or text, cantidad
+
         return text.strip(), 1
     
     def procesar_entrada(self, entrada: str) -> List[str]:

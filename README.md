@@ -81,6 +81,44 @@ La aplicación queda disponible en:
 
 **[http://localhost:3000](http://localhost:3000)**
 
+### Conectar Frontend con Backend
+
+Antes de ejecutar el frontend, configura la variable de entorno que apunta al backend.
+
+1. Copiar el ejemplo de env en `frontend`:
+
+```bash
+cp frontend/.env.example frontend/.env
+```
+
+2. Editar `frontend/.env` si tu backend corre en otro puerto o host. Por defecto apunta a `http://localhost:8000`.
+
+3. El frontend usará `NEXT_PUBLIC_API_URL` para llamar al endpoint `POST /api/optimizar`.
+
+Ejemplo de payload JSON (POST `POST $NEXT_PUBLIC_API_URL/api/optimizar`):
+
+```json
+{
+    "productos": [
+        {"nombre": "leche x2", "cantidad": 2},
+        {"nombre": "pan", "cantidad": 1}
+    ],
+    "max_supermercados": 3
+}
+```
+
+Comprobación rápida desde frontend:
+
+```bash
+# Desde la carpeta raiz del repo
+cd frontend
+# instalar dependencias (yarn o npm)
+yarn install
+yarn dev
+```
+
+Abre http://localhost:3000 y utiliza la UI que llama al endpoint; también podés probar con `curl` o Postman.
+
 ## Estructura del Proyecto
 
 ```
