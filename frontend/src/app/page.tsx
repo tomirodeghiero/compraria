@@ -52,6 +52,7 @@ export default function Home() {
     ahorro_estimado: number;
     supermercados: Record<string, { producto: string; precio: number }[]>;
   } | null>(null);
+  const [totalProductosCount, setTotalProductosCount] = useState<number>(0);
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -64,11 +65,14 @@ export default function Home() {
 
         const productosUnicos = new Map<string, ProductoDB>();
         const cats = new Set<string>();
+        let totalValidLines = 0;
 
         lines.forEach((line) => {
           if (!line.trim()) return;
           const cols = line.split(",");
           if (cols.length < 8) return;
+
+          totalValidLines += 1;
 
           const id = cols[0];
           let nombre = cols[1].trim();
@@ -86,6 +90,7 @@ export default function Home() {
 
         const productos = Array.from(productosUnicos.values());
         setProductosDB(productos);
+        setTotalProductosCount(totalValidLines);
         setCategorias(["Todas", ...Array.from(cats).sort()]);
         toast.success(
           `¡Cargados ${productos.length.toLocaleString()} productos únicos!`
@@ -236,7 +241,7 @@ export default function Home() {
                 Productos
               </p>
               <p className="text-3xl font-bold text-primary">
-                {productosDB.length.toLocaleString()}
+                {totalProductosCount.toLocaleString()}
               </p>
             </div>
             <div className="bg-card rounded-lg border border-border p-6 text-center">
