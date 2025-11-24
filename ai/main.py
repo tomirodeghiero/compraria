@@ -18,8 +18,6 @@ from dotenv import load_dotenv
 from weasyprint import HTML
 
 from embeddings.normalize import normalize_user_item
-from optimizer.genetic_algorithm import optimize_shopping_list
-
 
 # Constantes
 MAX_SUPERMERCADOS = 3
@@ -127,12 +125,7 @@ class OptimizadorCompras:
         print(f"\nOptimizando {len(items_normalizados)} ítems "
               f"(máximo {self.max_supermercados} supermercados)...")
         
-        lista_optimizada, total = optimize_shopping_list(
-            items_normalizados, 
-            max_supers=self.max_supermercados
-        )
-        
-        return lista_optimizada, total
+        return total
     
     @staticmethod
     def agrupar_por_supermercado(

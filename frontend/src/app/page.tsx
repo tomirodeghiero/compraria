@@ -40,6 +40,31 @@ interface ItemCarrito {
   cantidad: number;
 }
 
+interface ResultadoOptimizacion {
+  fecha: string;
+  total: number;
+  ahorro_estimado: number;
+  porcentaje_ahorro: number;
+  supermercados: Record<
+    string,
+    {
+      producto: string;
+      cantidad: number;
+      precio_unitario: number;
+      precio_total: number;
+      supermercado: string;
+    }[]
+  >;
+  resumen: string;
+  estadisticas?: {
+    productos_optimizados: number;
+    unidades_totales: number;
+    supermercados_usados: number;
+    costo_peor_supermercado: number;
+  };
+  total_por_supermercado?: Record<string, number>;
+}
+
 export default function Home() {
   const [productosDB, setProductosDB] = useState<ProductoDB[]>([]);
   const [categorias, setCategorias] = useState<string[]>([]);
@@ -47,11 +72,9 @@ export default function Home() {
   const [busqueda, setBusqueda] = useState("");
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
   const [cargando, setCargando] = useState(false);
-  const [resultado, setResultado] = useState<{
-    total: number;
-    ahorro_estimado: number;
-    supermercados: Record<string, { producto: string; precio: number }[]>;
-  } | null>(null);
+  const [resultado, setResultado] = useState<ResultadoOptimizacion | null>(
+    null
+  );
   const [totalProductosCount, setTotalProductosCount] = useState<number>(0);
 
   useEffect(() => {
@@ -61,41 +84,55 @@ export default function Home() {
           "/dataset_10000_productos_arg_5_super.csv"
         );
         const text = await response.text();
-        const lines = text.split("\n").slice(1);
+        const lines = text.split("\n");
 
-        const productosUnicos = new Map<string, ProductoDB>();
+        // Tomamos la primera línea como cabecera
+        const header = lines[0].split(",");
+        const nombreIndex = header.indexOf("nombre");
+        const categoriaIndex = header.indexOf("categoria");
+
+        if (nombreIndex === -1 || categoriaIndex === -1) {
+          toast.error(
+            "El CSV no tiene las columnas esperadas (nombre, categoria)"
+          );
+          return;
+        }
+
+        const productos: ProductoDB[] = [];
         const cats = new Set<string>();
-        let totalValidLines = 0;
 
-        lines.forEach((line) => {
-          if (!line.trim()) return;
+        // Empezamos desde la línea 1 (saltamos header)
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+
           const cols = line.split(",");
-          if (cols.length < 8) return;
+          if (cols.length < header.length) continue; // línea incompleta
 
-          totalValidLines += 1;
+          // Reconstruimos el nombre completo (puede tener comas)
+          const nombreRaw = cols
+            .slice(nombreIndex, categoriaIndex)
+            .join(",")
+            .trim();
+          const categoria = cols[categoriaIndex]?.trim() || "Sin categoría";
 
-          const id = cols[0];
-          let nombre = cols[1].trim();
-          const categoria = cols[2].trim();
+          // Limpiamos comillas si las hay
+          const nombre = nombreRaw.replace(/^"|"$/g, "").trim();
 
-          nombre = nombre.replace(/ x\d+$/i, "").trim();
+          // Generamos un ID único basado en la línea (o podrías usar hash si querés)
+          const id = `prod_${i}`;
 
-          const clave = `${nombre.toLowerCase()}|${categoria.toLowerCase()}`;
+          productos.push({ id, nombre, categoria });
+          cats.add(categoria);
+        }
 
-          if (!productosUnicos.has(clave)) {
-            productosUnicos.set(clave, { id, nombre, categoria });
-            cats.add(categoria);
-          }
-        });
-
-        const productos = Array.from(productosUnicos.values());
         setProductosDB(productos);
-        setTotalProductosCount(totalValidLines);
+        setTotalProductosCount(productos.length);
         setCategorias(["Todas", ...Array.from(cats).sort()]);
-        toast.success(
-          `¡Cargados ${productos.length.toLocaleString()} productos únicos!`
-        );
+
+        toast.success(`Cargados ${productos.length} productos.`);
       } catch (err) {
+        console.error(err);
         toast.error(
           "No se encontró el CSV en /public/dataset_10000_productos_arg_5_super.csv"
         );
@@ -141,7 +178,9 @@ export default function Home() {
   const optimizar = async () => {
     if (carrito.length === 0) return;
     setCargando(true);
-    toast.loading("Buscando las mejores ofertas...");
+    const loadingToast = toast.loading(
+      "🧬 Algoritmo Genético buscando la mejor combinación..."
+    );
 
     try {
       const payload = {
@@ -152,23 +191,44 @@ export default function Home() {
         max_supermercados: 3,
       };
 
-      const res = await axios.post(
+      const res = await axios.post<ResultadoOptimizacion>(
         "http://localhost:8000/api/optimizar",
         payload
       );
+
       setResultado(res.data);
-      toast.dismiss();
+      toast.dismiss(loadingToast);
+
+      // Toast de éxito con información detallada
+      const stats = res.data.estadisticas;
+      const ahorro = res.data.porcentaje_ahorro || 0;
+
       toast.success(
-        `¡AHORRADOR! Total: $${Math.round(res.data.total).toLocaleString(
-          "es-AR"
-        )}`
+        `🎉 ¡Optimización completada! Total: $${Math.round(
+          res.data.total
+        ).toLocaleString("es-AR")}`,
+        {
+          description: `Ahorraste $${Math.round(
+            res.data.ahorro_estimado
+          ).toLocaleString("es-AR")} (${ahorro.toFixed(1)}%) usando ${
+            stats?.supermercados_usados || "varios"
+          } supermercados`,
+          duration: 5000,
+        }
       );
     } catch (err: any) {
-      toast.dismiss();
-      toast.error(
+      toast.dismiss(loadingToast);
+
+      const errorMsg =
         err.response?.data?.detail ||
-          "Backend no responde. Ejecutá uvicorn server:app --reload"
-      );
+        "Backend no responde. Ejecutá: uvicorn server:app --reload";
+
+      toast.error("Error en la optimización", {
+        description: errorMsg,
+        duration: 6000,
+      });
+
+      console.error("Error completo:", err);
     } finally {
       setCargando(false);
     }
@@ -176,7 +236,7 @@ export default function Home() {
 
   const descargarPDF = async () => {
     if (!resultado) return;
-    toast.loading("Generando PDF...");
+    const loadingToast = toast.loading("Generando PDF profesional...");
     try {
       const res = await axios.post(
         "http://localhost:8000/api/generar-pdf",
@@ -188,32 +248,37 @@ export default function Home() {
       a.href = url;
       a.download = `Compra_Ahorro_${new Date().toISOString().slice(0, 10)}.pdf`;
       a.click();
-      toast.dismiss();
-      toast.success("¡PDF descargado!");
-    } catch {
-      toast.dismiss();
-      toast.error("Error generando PDF");
+      toast.dismiss(loadingToast);
+      toast.success("¡PDF descargado exitosamente!");
+    } catch (err) {
+      toast.dismiss(loadingToast);
+      toast.error("Error generando PDF. Verifica que el endpoint exista.");
+      console.error("Error PDF:", err);
     }
   };
 
   const compartirWhatsApp = async () => {
     if (!resultado) return;
-    toast.loading("Abriendo WhatsApp...");
+    const loadingToast = toast.loading("Preparando mensaje para WhatsApp...");
     try {
       const res = await axios.post(
         "http://localhost:8000/api/generar-whatsapp",
         resultado
       );
       window.open(res.data.url, "_blank");
-      toast.dismiss();
-      toast.success("¡Listo para compartir!");
-    } catch {
-      toast.dismiss();
-      toast.error("Error generando link");
+      toast.dismiss(loadingToast);
+      toast.success("¡Listo para compartir en WhatsApp!");
+    } catch (err) {
+      toast.dismiss(loadingToast);
+      toast.error("Error generando link. Verifica que el endpoint exista.");
+      console.error("Error WhatsApp:", err);
     }
   };
 
   const totalItems = carrito.reduce((s, i) => s + i.cantidad, 0);
+
+  // Calcular ahorro dinámico si hay resultado
+  const ahorroPromedio = resultado ? resultado.porcentaje_ahorro : 38;
 
   return (
     <>
@@ -224,34 +289,59 @@ export default function Home() {
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           {/* Hero Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-            <div className="bg-card rounded-lg border border-border p-6 text-center">
+            <div className="bg-card rounded-lg border border-border p-6 text-center hover:shadow-lg transition-shadow">
               <div className="flex items-center justify-center mb-3">
                 <TrendingDown className="text-accent w-8 h-8" />
               </div>
               <p className="text-sm font-medium text-muted-foreground mb-1">
-                Ahorro Promedio
+                {resultado ? "Tu Ahorro Real" : "Ahorro Promedio"}
               </p>
-              <p className="text-3xl font-bold text-primary">38%</p>
+              <p className="text-3xl font-bold text-primary">
+                {ahorroPromedio?.toFixed(1)}%
+              </p>
+              {resultado && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  $
+                  {Math.round(resultado.ahorro_estimado).toLocaleString(
+                    "es-AR"
+                  )}{" "}
+                  ahorrados
+                </p>
+              )}
             </div>
-            <div className="bg-card rounded-lg border border-border p-6 text-center">
+            <div className="bg-card rounded-lg border border-border p-6 text-center hover:shadow-lg transition-shadow">
               <div className="flex items-center justify-center mb-3">
                 <Package className="text-accent w-8 h-8" />
               </div>
               <p className="text-sm font-medium text-muted-foreground mb-1">
-                Productos
+                Productos Disponibles
               </p>
               <p className="text-3xl font-bold text-primary">
                 {totalProductosCount.toLocaleString()}
               </p>
+              {resultado?.estadisticas && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {resultado.estadisticas.productos_optimizados} en tu carrito
+                </p>
+              )}
             </div>
-            <div className="bg-card rounded-lg border border-border p-6 text-center">
+            <div className="bg-card rounded-lg border border-border p-6 text-center hover:shadow-lg transition-shadow">
               <div className="flex items-center justify-center mb-3">
                 <Zap className="text-accent w-8 h-8" />
               </div>
               <p className="text-sm font-medium text-muted-foreground mb-1">
-                Supermercados
+                {resultado?.estadisticas
+                  ? "Supermercados Usados"
+                  : "Supermercados"}
               </p>
-              <p className="text-3xl font-bold text-primary">5</p>
+              <p className="text-3xl font-bold text-primary">
+                {resultado?.estadisticas?.supermercados_usados || 5}
+              </p>
+              {!resultado && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Disponibles para optimizar
+                </p>
+              )}
             </div>
           </div>
 
@@ -297,9 +387,17 @@ export default function Home() {
                 <CardContent className="pt-6">
                   <ScrollArea className="h-[600px]">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pr-4">
-                      {productosFiltrados.map((p) => (
-                        <ProductCard key={p.id} product={p} onAdd={agregar} />
-                      ))}
+                      {productosFiltrados.length > 0 ? (
+                        productosFiltrados.map((p) => (
+                          <ProductCard key={p.id} product={p} onAdd={agregar} />
+                        ))
+                      ) : (
+                        <div className="col-span-2 text-center py-12">
+                          <p className="text-muted-foreground">
+                            No se encontraron productos con esos criterios
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </ScrollArea>
                 </CardContent>
@@ -323,8 +421,12 @@ export default function Home() {
                     <div className="space-y-3 pr-4">
                       {carrito.length === 0 ? (
                         <div className="text-center py-8">
+                          <ShoppingCart className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
                           <p className="text-sm text-muted-foreground">
                             Agrega productos para empezar
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            El algoritmo genético los optimizará
                           </p>
                         </div>
                       ) : (
@@ -347,17 +449,17 @@ export default function Home() {
                   <Button
                     onClick={optimizar}
                     disabled={cargando || carrito.length === 0}
-                    className="w-full h-12 text-base font-semibold mt-6 bg-primary hover:bg-primary/90"
+                    className="w-full h-12 text-base font-semibold mt-6 bg-primary hover:bg-primary/90 transition-all"
                   >
                     {cargando ? (
                       <>
                         <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                        Optimizando...
+                        Optimizando con AG...
                       </>
                     ) : (
                       <>
                         <Zap className="mr-2 w-4 h-4" />
-                        Optimizar Compra
+                        Optimizar con Genético
                       </>
                     )}
                   </Button>
