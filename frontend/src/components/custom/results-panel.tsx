@@ -87,8 +87,6 @@ export default function ResultsPanel({ resultado }: ResultsPanelProps) {
             )}
           </div>
         </ScrollArea>
-
-        {/* Export buttons removed per request */}
       </CardContent>
     </Card>
   );
