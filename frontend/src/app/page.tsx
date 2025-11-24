@@ -234,46 +234,7 @@ export default function Home() {
     }
   };
 
-  const descargarPDF = async () => {
-    if (!resultado) return;
-    const loadingToast = toast.loading("Generando PDF profesional...");
-    try {
-      const res = await axios.post(
-        "http://localhost:8000/api/generar-pdf",
-        resultado,
-        { responseType: "blob" }
-      );
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Compra_Ahorro_${new Date().toISOString().slice(0, 10)}.pdf`;
-      a.click();
-      toast.dismiss(loadingToast);
-      toast.success("¡PDF descargado exitosamente!");
-    } catch (err) {
-      toast.dismiss(loadingToast);
-      toast.error("Error generando PDF. Verifica que el endpoint exista.");
-      console.error("Error PDF:", err);
-    }
-  };
-
-  const compartirWhatsApp = async () => {
-    if (!resultado) return;
-    const loadingToast = toast.loading("Preparando mensaje para WhatsApp...");
-    try {
-      const res = await axios.post(
-        "http://localhost:8000/api/generar-whatsapp",
-        resultado
-      );
-      window.open(res.data.url, "_blank");
-      toast.dismiss(loadingToast);
-      toast.success("¡Listo para compartir en WhatsApp!");
-    } catch (err) {
-      toast.dismiss(loadingToast);
-      toast.error("Error generando link. Verifica que el endpoint exista.");
-      console.error("Error WhatsApp:", err);
-    }
-  };
+  // Export functions removed (PDF / WhatsApp) per UI requirements
 
   const totalItems = carrito.reduce((s, i) => s + i.cantidad, 0);
 
@@ -466,13 +427,7 @@ export default function Home() {
                 </CardContent>
               </Card>
 
-              {resultado && (
-                <ResultsPanel
-                  resultado={resultado}
-                  onDownloadPDF={descargarPDF}
-                  onShareWhatsApp={compartirWhatsApp}
-                />
-              )}
+              {resultado && <ResultsPanel resultado={resultado} />}
             </div>
           </div>
         </main>

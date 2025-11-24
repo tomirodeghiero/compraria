@@ -1,10 +1,10 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+// Button import removed because export buttons were removed
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Download, Share2, TrendingDown } from "lucide-react";
+import { TrendingDown } from "lucide-react";
 
 interface ResultItem {
   producto: string;
@@ -20,15 +20,9 @@ interface ResultsPanelProps {
     ahorro_estimado: number;
     supermercados: Record<string, ResultItem[]>;
   };
-  onDownloadPDF: () => void;
-  onShareWhatsApp: () => void;
 }
 
-export default function ResultsPanel({
-  resultado,
-  onDownloadPDF,
-  onShareWhatsApp,
-}: ResultsPanelProps) {
+export default function ResultsPanel({ resultado }: ResultsPanelProps) {
   return (
     <Card className="border-2 border-accent from-accent/5 to-primary/5 overflow-hidden shadow-lg">
       <CardHeader className="from-primary/10 to-accent/10 border-b border-accent/20 pb-6">
@@ -94,25 +88,7 @@ export default function ResultsPanel({
           </div>
         </ScrollArea>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Button
-            onClick={onDownloadPDF}
-            variant="outline"
-            size="sm"
-            className="w-full bg-transparent"
-          >
-            <Download className="mr-2 w-4 h-4" />
-            PDF
-          </Button>
-          <Button
-            onClick={onShareWhatsApp}
-            size="sm"
-            className="w-full bg-accent hover:bg-accent/90"
-          >
-            <Share2 className="mr-2 w-4 h-4" />
-            Compartir
-          </Button>
-        </div>
+        {/* Export buttons removed per request */}
       </CardContent>
     </Card>
   );
