@@ -8,6 +8,7 @@ import re
 # Importamos el optimizador genético
 from models.genetic_optimizer import optimizar_compra
 from embeddings.normalize import normalize_user_item
+from llm.client import generate_explanation
 
 app = FastAPI(
     title="Shopping Optimizer API",
@@ -32,6 +33,11 @@ class ProductoInput(BaseModel):
 class ListaComprasInput(BaseModel):
     productos: List[ProductoInput]
     max_supermercados: int = Field(default=3, ge=1, le=5)
+
+
+class ExplanationInput(BaseModel):
+    supermercados: Dict[str, List[Dict]]
+    total: float
 
 # === Utilidad para limpiar cantidades del texto ===
 def parse_quantity(text: str):
@@ -108,18 +114,56 @@ async def optimizar_lista(lista: ListaComprasInput):
         # Contar cuántos supermercados se usan
         num_supers = len(supermercados)
 
+        # Generar explicación con LLM (no bloqueante en cuanto a errores)
+        try:
+            # Aplanar lista de items para el LLM
+            flattened = []
+            for sup, items in supermercados.items():
+                for it in items:
+                    flattened.append({
+                        "producto": it.get("producto"),
+                        "supermercado": sup,
+                        "precio": it.get("precio_total") or it.get("precio_unitario") or 0,
+                    })
+
+            explanation = generate_explanation(flattened, total)
+        except Exception:
+            explanation = ""
+
         return {
             "fecha": datetime.now().strftime("%d/%m/%Y %H:%M"),
             "total": total,
             "ahorro_estimado": ahorro_estimado,
             "supermercados": supermercados,
-            "resumen": f"¡Optimización exitosa! Ahorraste ~38% usando {num_supers} supermercado{'s' if num_supers != 1 else ''}."
+            "resumen": f"¡Optimización exitosa! Ahorraste ~38% usando {num_supers} supermercado{'s' if num_supers != 1 else ''}.",
+            "explanation": explanation,
         }
 
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+
+@app.post("/api/explain")
+async def explain_route(payload: ExplanationInput):
+    try:
+        # Aplanar la estructura de supermercados a una lista de items aceptada por llm.client.generate_explanation
+        shopping_list = []
+        for supermercado, items in payload.supermercados.items():
+            for it in items:
+                precio = it.get("precio_total") or it.get("precio") or it.get("precio_unitario") or 0
+                shopping_list.append({
+                    "producto": it.get("producto") or it.get("nombre"),
+                    "supermercado": supermercado,
+                    "precio": precio,
+                })
+
+        explanation = generate_explanation(shopping_list, payload.total)
+        return {"explanation": explanation}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generando explicación: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

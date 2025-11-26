@@ -63,6 +63,7 @@ interface ResultadoOptimizacion {
     costo_peor_supermercado: number;
   };
   total_por_supermercado?: Record<string, number>;
+  explanation?: string;
 }
 
 export default function Home() {

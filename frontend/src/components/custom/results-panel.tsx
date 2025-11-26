@@ -19,6 +19,7 @@ interface ResultsPanelProps {
     total: number;
     ahorro_estimado: number;
     supermercados: Record<string, ResultItem[]>;
+    explanation?: string;
   };
 }
 
@@ -46,6 +47,12 @@ export default function ResultsPanel({ resultado }: ResultsPanelProps) {
           </div>
         </div>
       </CardHeader>
+      {resultado.explanation ? (
+        <div className="p-4 bg-background border-t border-b border-accent/10 text-sm text-foreground">
+          <strong className="block mb-2">Explicación:</strong>
+          <p className="whitespace-pre-line">{resultado.explanation}</p>
+        </div>
+      ) : null}
       <CardContent className="pt-6">
         <ScrollArea className="h-80 mb-6">
           <div className="space-y-6 pr-4">
