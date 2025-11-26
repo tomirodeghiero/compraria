@@ -1,19 +1,18 @@
-# models/genetic_optimizer.py
 import numpy as np
 import pandas as pd
 from typing import Dict
 import random
 from pathlib import Path
 
-# RUTA FIJA AL DATASET (está en la raíz del proyecto)
-BASE_DIR = Path(__file__).resolve().parent.parent  # sube dos niveles desde models/
+BASE_DIR = Path(__file__).resolve().parent.parent
 DATASET_PATH = BASE_DIR / "dataset_10000_productos_arg_5_super.csv"
 
-# Cargamos el dataset una sola vez al importar el módulo (más rápido)
+# Carga del dataset una sola vez al importar el módulo (más rápido)
 print("Cargando dataset de precios...")
 df_precios = pd.read_csv(DATASET_PATH)
 print(f"Dataset cargado: {len(df_precios)} productos disponibles en 5 supermercados.\n")
 
+# Clase
 class SupermarketGAOptimizer:
     def __init__(
         self,
@@ -53,19 +52,17 @@ class SupermarketGAOptimizer:
         self.n_supers = 5
 
         # Matriz de precios (productos × supermercados)
-        # === CORRECCIÓN CLAVE: tomamos el precio MÁS BARATO de cada producto en cada súper ===
         price_cols = ['precio_carrefour', 'precio_coto', 'precio_dia', 'precio_jumbo', 'precio_changomas']
         
         # Agrupamos por nombre y nos quedamos con el precio mínimo de cada supermercado
         df_minimos = (
             df_precios.groupby('nombre')[price_cols]
             .min()
-            .reindex(self.products)  # orden exacto de tu lista
-            .fillna(999999)          # si algún súper nunca tuvo ese producto
+            .reindex(self.products)
+            .fillna(999999)
         )
         
-        self.price_matrix = df_minimos.values  # ahora SÍ es (n_productos × 5)
-        # =====================================================================
+        self.price_matrix = df_minimos.values
 
         # Supermercados
         self.supermarkets = ['Carrefour', 'Coto', 'Día', 'Jumbo', 'Changomas']
@@ -152,7 +149,7 @@ class SupermarketGAOptimizer:
             "costo_total": round(float(self.best_cost), 2),
             "productos_optimizados": len(self.products),
             "unidades_totales": int(np.sum(self.quantities)),
-            "ahorro_vs_peor_supermercado": 0.0,  # lo calculamos después si querés
+            "ahorro_vs_peor_supermercado": 0.0,
             "distribucion": {},
             "total_por_supermercado": {s: 0.0 for s in self.supermarkets}
         }
@@ -174,7 +171,6 @@ class SupermarketGAOptimizer:
         return result
 
 
-# FUNCIÓN MÁS FÁCIL DE USAR
 def optimizar_compra(lista_compra: Dict[str, int]) -> Dict:
     """
     La función que vas a llamar desde cualquier lado.

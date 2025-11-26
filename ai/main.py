@@ -1,10 +1,3 @@
-"""
-Sistema de Optimización de Lista de Compras
-
-Este módulo procesa listas de compras, normaliza productos, optimiza la distribución
-entre supermercados y genera reportes en PDF y enlaces para WhatsApp.
-"""
-
 import sys
 import re
 import os
@@ -42,22 +35,18 @@ class OptimizadorCompras:
     
     @staticmethod
     def parse_quantity(text: str) -> Tuple[str, int]:
-        """Extract quantity from text. Improved to avoid matching weights like '200g' as quantity."""
-        # 1) xN style
         m = re.search(r'(?:[xX×*]\s*)(\d+)', text)
         if m:
             cantidad = int(m.group(1))
             nombre_limpio = re.sub(r'(?:[xX×*]\s*\d+)', '', text).strip()
             return nombre_limpio or text, cantidad
 
-        # 2) number + explicit unit (kg, g, unid, etc.)
         m = re.search(r'(\d+)\s*(?:unid|paq|lt|l|kg|g|gr|ml|unidades|litros|kilos)\b', text, re.IGNORECASE)
         if m:
             cantidad = int(m.group(1))
             nombre_limpio = re.sub(r'\d+\s*(?:unid|paq|lt|l|kg|g|gr|ml|unidades|litros|kilos)\b', '', text, flags=re.IGNORECASE).strip()
             return nombre_limpio or text, cantidad
 
-        # 3) standalone number (word boundaries) — avoids matching '200g'
         m = re.search(r'\b(\d+)\b', text)
         if m:
             cantidad = int(m.group(1))
@@ -95,13 +84,10 @@ class OptimizadorCompras:
         """
         items_normalizados = []
         
-        print("Procesando productos y cantidades...\n")
-        
         for item_raw in items_raw:
             nombre, cantidad = self.parse_quantity(item_raw)
             producto_dict, score = normalize_user_item(nombre)
             
-            # Agregar el producto tantas veces como indique la cantidad
             for _ in range(cantidad):
                 items_normalizados.append(producto_dict)
             
@@ -189,7 +175,6 @@ class OptimizadorCompras:
         ahorro_estimado = int(total * PORCENTAJE_AHORRO_ESTIMADO)
         
         print(f"\n{'TOTAL:':<68} ${total:>10,.0f}")
-        print(f"{'AHORRO ESTIMADO (~38%):':<68} ${ahorro_estimado:>10,.0f}")
         print(f"{separador}")
         
         return texto_whatsapp
@@ -224,114 +209,6 @@ class OptimizadorCompras:
         print(resumen)
         return resumen
     
-    def generar_pdf(
-        self, 
-        por_supermercado: Dict[str, List[Dict[str, Any]]], 
-        total: float, 
-        nombre_archivo: str = "lista_optimizada.pdf"
-    ) -> None:
-        """
-        Genera un archivo PDF con la lista de compras.
-        
-        Args:
-            por_supermercado: Productos agrupados por supermercado
-            total: Total de la compra
-            nombre_archivo: Nombre del archivo PDF de salida
-        """
-        fecha = datetime.now().strftime("%d/%m/%Y")
-        ahorro_pct = int(PORCENTAJE_AHORRO_ESTIMADO * 100)
-        
-        html_content = f"""
-        <html>
-        <head>
-            <style>
-                body {{ font-family: Arial, sans-serif; margin: 40px; }}
-                h1 {{ color: #2c3e50; }}
-                h2 {{ color: #34495e; margin-top: 30px; }}
-                h3 {{ color: #7f8c8d; }}
-                ul {{ list-style-type: none; padding: 0; }}
-                li {{ padding: 8px; border-bottom: 1px solid #ecf0f1; }}
-            </style>
-        </head>
-        <body>
-            <h1>Lista de Compras Optimizada</h1>
-            <h3>Fecha: {fecha}</h3>
-            <h2>Total: ${total:,.0f}</h2>
-            <h3>Ahorro estimado: ~{ahorro_pct}%</h3>
-        """
-        
-        for supermercado, items in por_supermercado.items():
-            html_content += f"<h2>{supermercado.upper()}</h2><ul>"
-            
-            for item in items:
-                precio = item["precio"] if not pd.isna(item["precio"]) else 0
-                html_content += f"<li>{item['producto']} — ${precio:,.0f}</li>"
-            
-            html_content += "</ul>"
-        
-        html_content += "</body></html>"
-        
-        HTML(string=html_content).write_pdf(nombre_archivo)
-        print(f"\n✓ PDF generado: {nombre_archivo}")
-    
-    def generar_enlace_whatsapp(self, texto: str, resumen: str) -> str:
-        """
-        Genera un enlace para compartir por WhatsApp.
-        
-        Args:
-            texto: Texto de la lista de compras
-            resumen: Resumen de la optimización
-            
-        Returns:
-            URL para compartir por WhatsApp
-        """
-        mensaje_completo = texto + "\n" + resumen
-        url = "https://wa.me/?text=" + urllib.parse.quote(mensaje_completo)
-        
-        print(f"✓ Enlace para WhatsApp generado")
-        print(f"  {url}\n")
-        
-        return url
-    
-    def ejecutar(self, entrada_usuario: str) -> None:
-        """
-        Ejecuta el proceso completo de optimización.
-        
-        Args:
-            entrada_usuario: Cadena con los productos ingresados por el usuario
-        """
-        try:
-            # 1. Procesar entrada
-            items_raw = self.procesar_entrada(entrada_usuario)
-            
-            # 2. Normalizar items
-            items_normalizados = self.normalizar_items(items_raw)
-            
-            # 3. Optimizar distribución
-            lista_optimizada, total = self.optimizar_distribucion(items_normalizados)
-            
-            # 4. Agrupar por supermercado
-            por_supermercado = self.agrupar_por_supermercado(lista_optimizada)
-            
-            # 5. Mostrar resultado
-            texto_whatsapp = self.mostrar_resultado(por_supermercado, total)
-            
-            # 6. Generar resumen
-            resumen = self.generar_resumen(por_supermercado, total)
-            
-            # 7. Generar PDF
-            self.generar_pdf(por_supermercado, total)
-            
-            # 8. Generar enlace WhatsApp
-            self.generar_enlace_whatsapp(texto_whatsapp, resumen)
-            
-            print("Proceso completado exitosamente.")
-            
-        except Exception as e:
-            print(f"\nError durante la ejecución: {str(e)}", file=sys.stderr)
-            sys.exit(1)
-
-
 def main():
     """Función principal del programa."""
     if len(sys.argv) < 2:

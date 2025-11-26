@@ -15,7 +15,6 @@ def main():
         print('ERROR: no se encontró el CSV en', CSV_PATH)
         sys.exit(2)
 
-    # remove old index if present
     if INDEX_PATH.exists():
         print('Eliminando índice viejo:', INDEX_PATH)
         try:
@@ -26,7 +25,6 @@ def main():
             sys.exit(3)
 
     try:
-        # import aquí para que el script falle con un error claro si falta faiss
         from embeddings.embeddingModel import ProductEmbedder
     except ModuleNotFoundError as e:
         print('\nFALTA DEPENDENCIA:', e)

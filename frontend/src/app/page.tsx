@@ -86,7 +86,6 @@ export default function Home() {
         const text = await response.text();
         const lines = text.split("\n");
 
-        // Tomamos la primera línea como cabecera
         const header = lines[0].split(",");
         const nombreIndex = header.indexOf("nombre");
         const categoriaIndex = header.indexOf("categoria");
@@ -101,25 +100,21 @@ export default function Home() {
         const productos: ProductoDB[] = [];
         const cats = new Set<string>();
 
-        // Empezamos desde la línea 1 (saltamos header)
         for (let i = 1; i < lines.length; i++) {
           const line = lines[i].trim();
           if (!line) continue;
 
           const cols = line.split(",");
-          if (cols.length < header.length) continue; // línea incompleta
+          if (cols.length < header.length) continue;
 
-          // Reconstruimos el nombre completo (puede tener comas)
           const nombreRaw = cols
             .slice(nombreIndex, categoriaIndex)
             .join(",")
             .trim();
           const categoria = cols[categoriaIndex]?.trim() || "Sin categoría";
 
-          // Limpiamos comillas si las hay
           const nombre = nombreRaw.replace(/^"|"$/g, "").trim();
 
-          // Generamos un ID único basado en la línea (o podrías usar hash si querés)
           const id = `prod_${i}`;
 
           productos.push({ id, nombre, categoria });
@@ -199,7 +194,6 @@ export default function Home() {
       setResultado(res.data);
       toast.dismiss(loadingToast);
 
-      // Toast de éxito con información detallada
       const stats = res.data.estadisticas;
       const ahorro = res.data.porcentaje_ahorro || 0;
 
@@ -238,13 +232,12 @@ export default function Home() {
 
   const totalItems = carrito.reduce((s, i) => s + i.cantidad, 0);
 
-  // Calcular ahorro dinámico si hay resultado
   const ahorroPromedio = resultado ? resultado.porcentaje_ahorro : 38;
 
   return (
     <>
       <Toaster position="top-center" richColors closeButton />
-      <div className="min-h-screen bg-gradient-to-b from-background via-muted to-background">
+      <div className="min-h-screen from-background via-muted to-background">
         <Header />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -310,7 +303,7 @@ export default function Home() {
             {/* Catálogo */}
             <div className="lg:col-span-2">
               <Card className="border border-border overflow-hidden shadow-sm">
-                <CardHeader className="bg-gradient-to-r from-primary/5 to-accent/5 border-b border-border py-6">
+                <CardHeader className="from-primary/5 to-accent/5 border-b border-border py-6">
                   <div className="space-y-4">
                     <div>
                       <h2 className="text-xl font-semibold text-foreground mb-4">
@@ -368,7 +361,7 @@ export default function Home() {
             {/* Carrito y Resultado */}
             <div className="space-y-8">
               <Card className="border border-border overflow-hidden shadow-sm">
-                <CardHeader className="bg-gradient-to-r from-primary/5 to-accent/5 border-b border-border py-6">
+                <CardHeader className="from-primary/5 to-accent/5 border-b border-border py-6">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <ShoppingCart className="w-5 h-5 text-accent" />
                     Mi Carrito

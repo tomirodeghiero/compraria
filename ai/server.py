@@ -1,8 +1,3 @@
-"""
-API REST para el Sistema de Optimización de Lista de Compras
-Implementado con FastAPI - VERSIÓN 100% FUNCIONAL (CORREGIDA)
-"""
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -29,7 +24,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# === Modelos Pydantic ===
+# === Modelos ===
 class ProductoInput(BaseModel):
     nombre: str = Field(..., min_length=1)
     cantidad: int = Field(default=1, ge=1)
@@ -72,7 +67,7 @@ async def root():
 @app.post("/api/optimizar")
 async def optimizar_lista(lista: ListaComprasInput):
     try:
-        # 1. Normalizar y consolidar la lista
+        # Normalizar y consolidar la lista
         lista_consolidada = {}
         for p in lista.productos:
             nombre_limpio, _ = parse_quantity(p.nombre)
@@ -88,15 +83,15 @@ async def optimizar_lista(lista: ListaComprasInput):
         if not lista_consolidada:
             raise HTTPException(status_code=400, detail="No se pudieron procesar productos válidos")
 
-        # 2. Llamar al optimizador genético
+        # Llamar al optimizador genético
         resultado_ga = optimizar_compra(lista_consolidada)
 
-        # 3. Formatear respuesta para el frontend
+        # Formatear respuesta para el frontend
         distribucion = resultado_ga["distribucion"]
         total = resultado_ga["costo_total"]
-        ahorro_estimado = round(total * 0.38, 2)  # 38% promedio vs peor súper
+        ahorro_estimado = round(total * 0.38, 2)
 
-        # Convertir a formato esperado: { "Carrefour": [items], "Coto": [...] }
+        # Convertir a formato esperado: { "Carrefour": [items], "Jumbo": [...] }
         supermercados = {}
         for prod, asignaciones in distribucion.items():
             for asignacion in asignaciones:
