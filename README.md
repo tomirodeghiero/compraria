@@ -1,146 +1,95 @@
 # Compraria
 
-**Generador Inteligente de Lista de Compras Mensual para el Hogar**
+**Generador inteligente de listas de compras optimizadas**
 
-Proyecto Final – Inteligencia Artificial
-Facultad de Ciencias Exactas, Físico-Químicas y Naturales
-Universidad Nacional de Río Cuarto
+Proyecto final — Inteligencia Artificial
+Facultad de Ciencias Exactas, Físico-Químicas y Naturales — Universidad Nacional de Río Cuarto
 
 **Autores:** Joaquín Mezzano, Tomás Rodeghiero
 
-## Descripción
+**Resumen**
+- Compraria optimiza listas de compra entre varios supermercados argentinos usando embeddings, un optimizador genético y generación de texto mediante un LLM para explicar las decisiones.
 
-Compraria es un sistema web que integra técnicas de inteligencia artificial para generar automáticamente listas de compras mensuales personalizadas. Incorpora embeddings vectoriales, modelos de lenguaje, algoritmos genéticos, predicción con XGBoost y clasificación con redes neuronales.
-
-## Requisitos del Sistema
-
-- Python 3.10 – 3.12
+**Requisitos**
+- Python 3.10–3.12
 - Node.js ≥ 18
-- Clave API de OpenAI
+- `pip` y `yarn` (o `npm`)
+- Clave API de OpenAI (variable de entorno `OPENAI_API_KEY`)
 
-## Instalación y Ejecución
+**Estructura relevante**
+- `ai/`: backend y componentes de IA (embeddings, optimizador, servidor FastAPI, cliente LLM)
+- `ai/llm/prompts/explanation_prompt.txt`: prompt usado para generar explicaciones con el LLM
+- `frontend/`: aplicación Next.js (UI)
 
-### 1. Clonar el Repositorio
+**Instalación y ejecución — Backend (AI)**
 
-```bash
-git clone https://github.com/tomirodeghiero/compraria.git
-cd compraria
-```
-
----
-
-## 2. Configuración del Servidor (Carpeta `ai/`)
-
-Entrar al módulo de IA:
+1. Abrir la carpeta `ai` y crear/activar un virtualenv:
 
 ```bash
 cd ai
-```
-
-### Crear entorno virtual
-
-```bash
 python3 -m venv venv
-source venv/bin/activate    # Linux/macOS
-# venv\Scripts\activate     # Windows
+source venv/bin/activate
 ```
 
-### Instalar dependencias
+2. Instalar dependencias:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Ejecutar el optimizador / sistema por consola
-
-Podés probar el sistema de IA directamente desde terminal con:
+3. Exportar la API key de OpenAI (o crear un archivo `.env` con `OPENAI_API_KEY`):
 
 ```bash
-python3 main.py "leche descremada, yerba playadito 1kg, arroz, bizcochitos don satur"
+export OPENAI_API_KEY="tu_api_key_aqui"
+# o crear ai/.env con: OPENAI_API_KEY=tu_api_key_aqui
 ```
 
-### Ejecutar el server
-
-Es posible ejecutar el servidor mediante el comando:
+4. Ejecutar el servidor FastAPI:
 
 ```bash
-uvicorn server:app --reload --port 8000
+python -m uvicorn server:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Esto ejecuta el pipeline completo de embeddings + normalización + optimizador.
-
-## 3. Configuración del Frontend (Next.js)
-
-```bash
-cd frontend
-yarn install
-yarn dev
-```
-
-La aplicación queda disponible en:
-
-**[http://localhost:3000](http://localhost:3000)**
-
-### Conectar Frontend con Backend
-
-Antes de ejecutar el frontend, configura la variable de entorno que apunta al backend.
-
-1. Copiar el ejemplo de env en `frontend`:
-
-```bash
-cp frontend/.env.example frontend/.env
-```
-
-2. Editar `frontend/.env` si tu backend corre en otro puerto o host. Por defecto apunta a `http://localhost:8000`.
-
-3. El frontend usará `NEXT_PUBLIC_API_URL` para llamar al endpoint `POST /api/optimizar`.
-
-Ejemplo de payload JSON (POST `POST $NEXT_PUBLIC_API_URL/api/optimizar`):
+Endpoints principales del backend
+- `GET /` — estado básico de la API
+- `POST /api/optimizar` — optimiza la lista de productos y devuelve la distribución por supermercado, total y `explanation` (texto generado por LLM). Payload:
 
 ```json
 {
-  "productos": [
-    { "nombre": "leche x2", "cantidad": 2 },
-    { "nombre": "pan", "cantidad": 1 }
-  ],
-  "max_supermercados": 3
+    "productos": [{"nombre":"leche x2","cantidad":2}, {"nombre":"pan","cantidad":1}],
+    "max_supermercados": 3
 }
 ```
 
-Comprobación rápida desde frontend:
+**Instalación y ejecución — Frontend (Next.js)**
+
+1. Abrir la carpeta `frontend`:
 
 ```bash
-# Desde la carpeta raiz del repo
 cd frontend
-# instalar dependencias (yarn o npm)
 yarn install
 yarn dev
 ```
 
-Abre http://localhost:3000 y utiliza la UI que llama al endpoint; también podés probar con `curl` o Postman.
+2. Acceder a `http://localhost:3000` en el navegador.
 
-## Estructura del Proyecto
+**LLM / OpenAI**
+- El cliente de OpenAI está en `ai/llm/client.py`. Usa la variable de entorno `OPENAI_API_KEY`.
+- El prompt base está en `ai/llm/prompts/explanation_prompt.txt` y se puede personalizar para cambiar el tono, formato y longitud de la explicación.
+- Modelo usado por defecto: `gpt-4o-mini` (puedes cambiarlo en `client.py`).
 
-```
-compraria/
-├── ai/                # Módulo principal de IA (embeddings, LLM, GA, etc.)
-│   ├── main.py
-│   ├── embeddings/
-│   ├── optimizer/
-│   ├── models/
-│   └── prompt/
-└── frontend/          # Next.js 16
-    └── src/app/
-```
+**Frontend: dónde se muestra la explicación**
+- `frontend/src/components/custom/results-panel.tsx` muestra `explanation` (si existe) justo debajo del encabezado del panel de resultados.
 
-## Tecnologías Implementadas
+**Pruebas rápidas**
+- Ejecuta backend y frontend como arriba. Desde la UI agrega productos y presiona "Optimizar con Genético"; la respuesta mostrará el resumen y, si la llamada al LLM fue exitosa, una explicación en el panel de resultados.
 
-- **Búsqueda semántica:** Embeddings + normalización vectorial
-- **Generación de listas:** GPT-4o-mini
-- **Optimización:** Algoritmo Genético (DEAP)
-- **Predicción:** XGBoost
-- **Clasificación:** Red Neuronal (PyTorch)
-- **Frontend:** Next.js 14 + Tailwind CSS
-- **Backend/IA Server:** Python
+**Consejos y notas**
+- Si la generación del LLM falla (p. ej. sin API key o error de red), el backend incluye un mensaje de error en el campo `explanation` en vez de romper la respuesta.
+- Para producción: considera hacer la llamada al LLM de forma asíncrona (background task) y retornar una respuesta inmediata al usuario, o cachear explicaciones para listas idénticas.
 
-**Universidad Nacional de Río Cuarto – 2025**
+**Contacto (GitHub)**
+- Joaquín Mezzano (@joaquinmezzano)
+- Tomás Rodeghiero (@tomirodeghiero)
+
+-- Fin
