@@ -6,9 +6,9 @@ from datetime import datetime
 import re
 
 # Importamos el optimizador genético
-from models.genetic_optimizer import optimizar_compra
-from embeddings.normalize import normalize_user_item
-from llm.client import generate_explanation
+from .normalizer import normalize_user_item
+from .models.genetic_optimizer import optimizar_compra
+from .llm.client import generate_explanation
 
 app = FastAPI(
     title="Shopping Optimizer API",

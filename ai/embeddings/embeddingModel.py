@@ -6,7 +6,9 @@ import os
 
 class ProductEmbedder:
     def __init__(self):
-        self.model = SentenceTransformer('intfloat/multilingual-e5-large')  # excelente en español
+        print("📦 Inicializando modelo de embeddings...")
+        self.model = SentenceTransformer('intfloat/multilingual-e5-large')
+        print("✅ Modelo cargado")
         self.index = None
         self.products_df = None
 
@@ -16,65 +18,88 @@ class ProductEmbedder:
             base_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), ".."))
             csv_path = os.path.join(base_dir, os.path.basename(csv_path))
 
-        print(f"Loading CSV from: {csv_path}")
+        print(f"📊 Cargando CSV: {csv_path}")
         df = pd.read_csv(csv_path)
         self.products_df = df
 
-        texts = (df['nombre'].fillna('') + " " + df['categoria'].fillna('')).tolist()
+        # Add "passage: " prefix for e5 models (recommended by authors)
+        texts = ["passage: " + (str(row['nombre']) + " " + str(row['categoria'])) 
+                 for _, row in df.iterrows()]
         total_texts = len(texts)
-        print(f"Productos en CSV: {len(df)}, textos a codificar: {total_texts}")
+        print(f"Total productos: {len(df)}")
 
-        # Encode in chunks to avoid OOM / partial encodes
+        # Encode in chunks to avoid OOM
         chunk_size = 512
         emb_list = []
+        print(f"🔄 Generando embeddings...")
         for i in range(0, total_texts, chunk_size):
             chunk = texts[i:i+chunk_size]
-            print(f"Encoding chunk {i}..{i+len(chunk)-1} (size={len(chunk)})")
-            emb = self.model.encode(chunk, batch_size=32, show_progress_bar=False)
+            emb = self.model.encode(chunk, batch_size=64, show_progress_bar=False, convert_to_numpy=True)
             emb_list.append(emb)
 
-        if len(emb_list) == 1:
-            embeddings = emb_list[0]
-        else:
-            embeddings = np.vstack(emb_list)
+        embeddings = np.vstack(emb_list) if len(emb_list) > 1 else emb_list[0]
 
-        # normalize
-        embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
+        # Normalize for cosine similarity
+        norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+        embeddings = embeddings / np.maximum(norms, 1e-10)
 
         dimension = embeddings.shape[1]
         self.index = faiss.IndexFlatIP(dimension)  # Inner Product = cosine
         self.index.add(embeddings.astype(np.float32))
 
-        # ensure index directory is inside embeddings package
+        # Save index
         index_dir = os.path.join(os.path.dirname(__file__), 'faiss_index')
         os.makedirs(index_dir, exist_ok=True)
         index_path = os.path.join(index_dir, 'index.faiss')
         faiss.write_index(self.index, index_path)
-        print(f"Índice FAISS creado y guardado en: {index_path} (ntotal={self.index.ntotal})")
+        print(f"💾 Índice guardado: {index_path} (productos={self.index.ntotal})")
 
     def load_index(self):
-        # load CSV relative to package
-        csv_default = os.path.join(os.path.normpath(os.path.join(os.path.dirname(__file__), '..')), 'dataset_10000_productos_arg_5_super.csv')
+        # Load CSV
+        csv_default = os.path.join(
+            os.path.normpath(os.path.join(os.path.dirname(__file__), '..')), 
+            'dataset_10000_productos_arg_5_super.csv'
+        )
+        
         if os.path.exists(csv_default):
             self.products_df = pd.read_csv(csv_default)
         else:
-            # fallback to current working dir
+            # fallback
             self.products_df = pd.read_csv('dataset_10000_productos_arg_5_super.csv')
 
+        # Load FAISS index
         index_path = os.path.join(os.path.dirname(__file__), 'faiss_index', 'index.faiss')
+        
         if os.path.exists(index_path):
-            print(f"Cargando índice desde: {index_path}")
+            print(f"📂 Cargando índice FAISS...")
             self.index = faiss.read_index(index_path)
-            print(f"Índice cargado, ntotal={self.index.ntotal}")
+            print(f"✅ Índice cargado ({self.index.ntotal} productos)")
         else:
-            print("No se encontró índice FAISS, construyendo uno nuevo...")
+            print("⚠️  No se encontró índice FAISS, construyendo uno nuevo...")
             self.build_index(csv_path=csv_default)
 
     def find_best_match(self, query, k=5):
-        query_emb = self.model.encode([query])
-        query_emb = query_emb / np.linalg.norm(query_emb)
+        """
+        Busca los k mejores matches para la query
+        Retorna: lista de tuplas (row_dict, score)
+        """
+        # Prepend "query: " prefix for e5 models (recommended by authors)
+        prefixed_query = f"query: {query}"
+        
+        # Encode query
+        query_emb = self.model.encode([prefixed_query], convert_to_numpy=True)
+        
+        # Normalize
+        query_emb = query_emb / np.maximum(np.linalg.norm(query_emb), 1e-10)
+        
+        # Search
         scores, indices = self.index.search(query_emb.astype(np.float32), k)
-        return [(self.products_df.iloc[i], scores[0][j]) for j, i in enumerate(indices[0])]
-
-embedder = ProductEmbedder()
-embedder.load_index()  # una sola vez
+        
+        # Return results
+        results = []
+        for j, idx in enumerate(indices[0]):
+            row = self.products_df.iloc[idx].to_dict()
+            score = float(scores[0][j])
+            results.append((row, score))
+        
+        return results

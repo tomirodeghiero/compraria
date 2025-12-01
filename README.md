@@ -56,7 +56,7 @@ pip install -r requirements.txt
 Podés probar el sistema de IA directamente desde terminal con:
 
 ```bash
-python3 main.py "leche descremada, yerba playadito 1kg, arroz, coca cola 2.25, bizcochitos don satur, jabon dove"
+python3 main.py "leche descremada, yerba playadito 1kg, arroz, bizcochitos don satur"
 ```
 
 ### Ejecutar el server
@@ -99,11 +99,11 @@ Ejemplo de payload JSON (POST `POST $NEXT_PUBLIC_API_URL/api/optimizar`):
 
 ```json
 {
-    "productos": [
-        {"nombre": "leche x2", "cantidad": 2},
-        {"nombre": "pan", "cantidad": 1}
-    ],
-    "max_supermercados": 3
+  "productos": [
+    { "nombre": "leche x2", "cantidad": 2 },
+    { "nombre": "pan", "cantidad": 1 }
+  ],
+  "max_supermercados": 3
 }
 ```
 
