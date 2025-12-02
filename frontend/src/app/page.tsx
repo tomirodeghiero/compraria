@@ -331,7 +331,7 @@ export default function Home() {
                     <div className="relative">
                       <Search className="absolute left-3 top-3 text-muted-foreground w-5 h-5" />
                       <Input
-                        placeholder="Busca entre 10.000 productos..."
+                        placeholder="Busca entre 1.000 productos..."
                         value={busqueda}
                         onChange={(e) => setBusqueda(e.target.value)}
                         className="pl-10 bg-background border-border text-foreground placeholder-muted-foreground"
